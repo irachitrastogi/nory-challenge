@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import xss from 'xss-clean';
 import path from 'path';
 import { AppDataSource } from './config/database';
 import { setupRoutes } from './api/routes';
@@ -18,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
-app.use(xss());
+// Removed xss-clean due to TypeScript compatibility issues
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -49,7 +48,7 @@ AppDataSource.initialize()
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error('Error during Data Source initialization', error);
   });
 

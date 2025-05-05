@@ -1,0 +1,4 @@
+location_id,name,address,phone,email,active
+1,Downtown,"123 Main St, City, State 12345","555-123-4567",downtown@weirdsalads.com,true
+2,Uptown,"456 High St, City, State 12345","555-234-5678",uptown@weirdsalads.com,true
+3,Westside,"789 West Blvd, City, State 12345","555-345-6789",westside@weirdsalads.com,true

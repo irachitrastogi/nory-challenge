@@ -1,0 +1,16 @@
+ingredient_id,name,description,cost,unit,active
+1,Lettuce,Fresh romaine lettuce,2.50,kg,true
+2,Tomato,Ripe tomatoes,3.00,kg,true
+3,Cucumber,Organic cucumbers,1.75,kg,true
+4,Carrot,Fresh carrots,1.50,kg,true
+5,Chicken,Grilled chicken breast,5.00,kg,true
+6,Avocado,Ripe avocados,4.50,kg,true
+7,Quinoa,Organic quinoa,3.25,kg,true
+8,Feta Cheese,Greek feta cheese,6.00,kg,true
+9,Olive Oil,Extra virgin olive oil,8.00,liter,true
+10,Balsamic Vinegar,Aged balsamic vinegar,10.00,liter,true
+11,Walnuts,Toasted walnuts,12.00,kg,true
+12,Spinach,Baby spinach,3.50,kg,true
+13,Red Onion,Fresh red onions,1.80,kg,true
+14,Bell Pepper,Colorful bell peppers,2.75,kg,true
+15,Tofu,Organic firm tofu,4.00,kg,true

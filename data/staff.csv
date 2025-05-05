@@ -1,0 +1,10 @@
+staff_id,name,location_id,role,active
+1,John Doe,1,Manager,true
+2,Jane Smith,1,Chef,true
+3,Bob Johnson,1,Server,true
+4,Alice Brown,2,Manager,true
+5,Charlie Wilson,2,Chef,true
+6,Diana Miller,2,Server,true
+7,Edward Davis,3,Manager,true
+8,Fiona Clark,3,Chef,true
+9,George White,3,Server,true

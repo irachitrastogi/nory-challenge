@@ -5,64 +5,615 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Weird Salads Inventory</title>
   <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .form-row {
+      display: flex;
+      margin-bottom: 15px;
+      gap: 10px;
+    }
+    .form-row label {
+      width: 150px;
+      display: inline-block;
+    }
+    .form-row input, .form-row select {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .tab-container {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      border-bottom: 2px solid #4CAF50;
+      color: #4CAF50;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
 </head>
 <body>
   <header>
     <h1>Weird Salads Inventory Management</h1>
   </header>
   
-  <main>
-    <section id="login-section">
-      <h2>Select Location and Staff</h2>
-      <div class="form-container">
-        <div class="form-group">
-          <label for="location-select">Location:</label>
-          <select id="location-select">
-            <option value="">Select a location</option>
-            <!-- Locations will be loaded here -->
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="staff-select">Staff:</label>
-          <select id="staff-select" disabled>
-            <option value="">Select a staff member</option>
-            <!-- Staff will be loaded here based on location -->
-          </select>
-        </div>
-        
-        <button id="login-button" disabled>Start Session</button>
+  <div class="container">
+    <div class="card">
+      <h2>Location & Staff Selection</h2>
+      <div class="form-row">
+        <label for="location">Location:</label>
+        <select id="location" onchange="loadStaff()">
+          <option value="">Select Location</option>
+        </select>
       </div>
-    </section>
+      <div class="form-row">
+        <label for="staff">Staff:</label>
+        <select id="staff" disabled>
+          <option value="">Select Staff</option>
+        </select>
+      </div>
+      <button onclick="login()">Login</button>
+    </div>
     
-    <section id="dashboard" class="hidden">
-      <!-- Dashboard content will be shown after login -->
-      <div class="tabs">
-        <button class="tab-button active" data-tab="inventory">Inventory</button>
-        <button class="tab-button" data-tab="deliveries">Deliveries</button>
-        <button class="tab-button" data-tab="sales">Sales</button>
-        <button class="tab-button" data-tab="stock">Take Stock</button>
-        <button class="tab-button" data-tab="reports">Reports</button>
+    <div id="dashboard" style="display: none;">
+      <div class="tab-container">
+        <div class="tab active" onclick="showTab('inventory')">Inventory</div>
+        <div class="tab" onclick="showTab('delivery')">Accept Delivery</div>
+        <div class="tab" onclick="showTab('sale')">Record Sale</div>
+        <div class="tab" onclick="showTab('stock')">Take Stock</div>
+        <div class="tab" onclick="showTab('reports')">Reports</div>
       </div>
       
-      <div id="tab-content">
-        <!-- Tab content will be loaded here -->
-        <div id="inventory-tab" class="tab-panel active">
-          <h3>Current Inventory</h3>
-          <div id="inventory-list">
-            <!-- Inventory items will be loaded here -->
-          </div>
+      <div id="inventory" class="tab-content active">
+        <div class="card">
+          <h2>Current Inventory</h2>
+          <div id="inventory-table"></div>
         </div>
-        
-        <!-- Other tab panels will be added here -->
       </div>
-    </section>
-  </main>
+      
+      <div id="delivery" class="tab-content">
+        <div class="card">
+          <h2>Accept Delivery</h2>
+          <div class="form-row">
+            <label for="delivery-ingredient">Ingredient:</label>
+            <select id="delivery-ingredient">
+              <option value="">Select Ingredient</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="delivery-quantity">Quantity:</label>
+            <input type="number" id="delivery-quantity" min="0.01" step="0.01">
+          </div>
+          <div class="form-row">
+            <label for="delivery-cost">Cost:</label>
+            <input type="number" id="delivery-cost" min="0" step="0.01">
+          </div>
+          <div class="form-row">
+            <label for="delivery-reference">Reference:</label>
+            <input type="text" id="delivery-reference">
+          </div>
+          <div class="form-row">
+            <label for="delivery-notes">Notes:</label>
+            <input type="text" id="delivery-notes">
+          </div>
+          <button onclick="acceptDelivery()">Accept Delivery</button>
+        </div>
+      </div>
+      
+      <div id="sale" class="tab-content">
+        <div class="card">
+          <h2>Record Sale</h2>
+          <div class="form-row">
+            <label for="sale-menu-item">Menu Item:</label>
+            <select id="sale-menu-item">
+              <option value="">Select Menu Item</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="sale-quantity">Quantity:</label>
+            <input type="number" id="sale-quantity" min="1" step="1" value="1">
+          </div>
+          <div class="form-row">
+            <label for="sale-notes">Notes:</label>
+            <input type="text" id="sale-notes">
+          </div>
+          <button onclick="recordSale()">Record Sale</button>
+        </div>
+      </div>
+      
+      <div id="stock" class="tab-content">
+        <div class="card">
+          <h2>Take Stock</h2>
+          <div class="form-row">
+            <label for="stock-ingredient">Ingredient:</label>
+            <select id="stock-ingredient">
+              <option value="">Select Ingredient</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="stock-actual-quantity">Actual Quantity:</label>
+            <input type="number" id="stock-actual-quantity" min="0" step="0.01">
+          </div>
+          <div class="form-row">
+            <label for="stock-notes">Notes:</label>
+            <input type="text" id="stock-notes">
+          </div>
+          <button onclick="takeStock()">Take Stock</button>
+        </div>
+      </div>
+      
+      <div id="reports" class="tab-content">
+        <div class="card">
+          <h2>Inventory Movements</h2>
+          <div id="movements-table"></div>
+        </div>
+        <div class="card">
+          <h2>Summary Report</h2>
+          <div id="summary-report"></div>
+        </div>
+      </div>
+    </div>
+  </div>
   
-  <footer>
-    <p>&copy; 2025 Weird Salads Inventory Management</p>
-  </footer>
-  
-  <script src="js/app.js"></script>
+  <script>
+    // Global state
+    let currentLocation = null;
+    let currentStaff = null;
+    let ingredients = [];
+    let menuItems = [];
+    
+    // Load locations on page load
+    window.onload = function() {
+      loadLocations();
+    };
+    
+    // Load locations
+    async function loadLocations() {
+      try {
+        // For demo purposes, use mock data
+        const locations = [
+          { location_id: 1, name: "Downtown" },
+          { location_id: 2, name: "Uptown" },
+          { location_id: 3, name: "Westside" }
+        ];
+        
+        const locationSelect = document.getElementById('location');
+        locationSelect.innerHTML = '<option value="">Select Location</option>';
+        
+        locations.forEach(location => {
+          const option = document.createElement('option');
+          option.value = location.location_id;
+          option.textContent = location.name;
+          locationSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading locations:', error);
+        alert('Failed to load locations');
+      }
+    }
+    
+    // Load staff for selected location
+    async function loadStaff() {
+      const locationId = document.getElementById('location').value;
+      const staffSelect = document.getElementById('staff');
+      
+      staffSelect.innerHTML = '<option value="">Select Staff</option>';
+      staffSelect.disabled = !locationId;
+      
+      if (!locationId) return;
+      
+      try {
+        // For demo purposes, use mock data
+        const staffMembers = [
+          { staff_id: 1, name: "John Doe", location_id: 1 },
+          { staff_id: 2, name: "Jane Smith", location_id: 1 },
+          { staff_id: 3, name: "Bob Johnson", location_id: 1 },
+          { staff_id: 4, name: "Alice Brown", location_id: 2 },
+          { staff_id: 5, name: "Charlie Wilson", location_id: 2 },
+          { staff_id: 6, name: "Diana Miller", location_id: 2 },
+          { staff_id: 7, name: "Edward Davis", location_id: 3 },
+          { staff_id: 8, name: "Fiona Clark", location_id: 3 },
+          { staff_id: 9, name: "George White", location_id: 3 }
+        ].filter(staff => staff.location_id == locationId);
+        
+        staffMembers.forEach(staff => {
+          const option = document.createElement('option');
+          option.value = staff.staff_id;
+          option.textContent = staff.name;
+          staffSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading staff:', error);
+        alert('Failed to load staff');
+      }
+    }
+    
+    // Login and show dashboard
+    function login() {
+      const locationId = document.getElementById('location').value;
+      const staffId = document.getElementById('staff').value;
+      
+      if (!locationId || !staffId) {
+        alert('Please select both location and staff');
+        return;
+      }
+      
+      currentLocation = locationId;
+      currentStaff = staffId;
+      
+      document.getElementById('dashboard').style.display = 'block';
+      
+      // Load initial data
+      loadInventory();
+      loadIngredients();
+      loadMenuItems();
+      loadMovements();
+      loadSummary();
+    }
+    
+    // Show selected tab
+    function showTab(tabId) {
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelector(`.tab[onclick="showTab('${tabId}')"]`).classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(tabId).classList.add('active');
+      
+      // Refresh data when switching to certain tabs
+      if (tabId === 'inventory') {
+        loadInventory();
+      } else if (tabId === 'reports') {
+        loadMovements();
+        loadSummary();
+      }
+    }
+    
+    // Load inventory data
+    async function loadInventory() {
+      if (!currentLocation) return;
+      
+      try {
+        // For demo purposes, use mock data
+        const inventory = [
+          { inventory_id: 1, ingredient: { name: "Lettuce", cost: 2.50 }, quantity: 10, unit: "kg" },
+          { inventory_id: 2, ingredient: { name: "Tomato", cost: 3.00 }, quantity: 8, unit: "kg" },
+          { inventory_id: 3, ingredient: { name: "Cucumber", cost: 1.75 }, quantity: 6, unit: "kg" },
+          { inventory_id: 4, ingredient: { name: "Carrot", cost: 1.50 }, quantity: 7, unit: "kg" },
+          { inventory_id: 5, ingredient: { name: "Chicken", cost: 5.00 }, quantity: 12, unit: "kg" }
+        ];
+        
+        const tableContainer = document.getElementById('inventory-table');
+        
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Cost</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        inventory.forEach(item => {
+          const value = (item.quantity * item.ingredient.cost).toFixed(2);
+          html += `
+            <tr>
+              <td>${item.ingredient.name}</td>
+              <td>${item.quantity}</td>
+              <td>${item.unit}</td>
+              <td>$${item.ingredient.cost.toFixed(2)}</td>
+              <td>$${value}</td>
+            </tr>
+          `;
+        });
+        
+        html += `
+            </tbody>
+          </table>
+        `;
+        
+        tableContainer.innerHTML = html;
+      } catch (error) {
+        console.error('Error loading inventory:', error);
+        alert('Failed to load inventory');
+      }
+    }
+    
+    // Load ingredients
+    async function loadIngredients() {
+      try {
+        // For demo purposes, use mock data
+        ingredients = [
+          { ingredient_id: 1, name: "Lettuce", cost: 2.50 },
+          { ingredient_id: 2, name: "Tomato", cost: 3.00 },
+          { ingredient_id: 3, name: "Cucumber", cost: 1.75 },
+          { ingredient_id: 4, name: "Carrot", cost: 1.50 },
+          { ingredient_id: 5, name: "Chicken", cost: 5.00 }
+        ];
+        
+        const deliveryIngredientSelect = document.getElementById('delivery-ingredient');
+        const stockIngredientSelect = document.getElementById('stock-ingredient');
+        
+        deliveryIngredientSelect.innerHTML = '<option value="">Select Ingredient</option>';
+        stockIngredientSelect.innerHTML = '<option value="">Select Ingredient</option>';
+        
+        ingredients.forEach(ingredient => {
+          const option1 = document.createElement('option');
+          option1.value = ingredient.ingredient_id;
+          option1.textContent = ingredient.name;
+          deliveryIngredientSelect.appendChild(option1);
+          
+          const option2 = document.createElement('option');
+          option2.value = ingredient.ingredient_id;
+          option2.textContent = ingredient.name;
+          stockIngredientSelect.appendChild(option2);
+        });
+      } catch (error) {
+        console.error('Error loading ingredients:', error);
+        alert('Failed to load ingredients');
+      }
+    }
+    
+    // Load menu items
+    async function loadMenuItems() {
+      if (!currentLocation) return;
+      
+      try {
+        // For demo purposes, use mock data
+        menuItems = [
+          { menu_item_id: 1, name: "Classic Caesar Salad", price: 8.99 },
+          { menu_item_id: 2, name: "Greek Salad", price: 9.99 },
+          { menu_item_id: 3, name: "Chicken Quinoa Bowl", price: 11.99 },
+          { menu_item_id: 4, name: "Avocado Spinach Salad", price: 10.99 },
+          { menu_item_id: 5, name: "Tofu Veggie Salad", price: 10.99 }
+        ];
+        
+        const menuItemSelect = document.getElementById('sale-menu-item');
+        menuItemSelect.innerHTML = '<option value="">Select Menu Item</option>';
+        
+        menuItems.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.menu_item_id;
+          option.textContent = `${item.name} - $${item.price.toFixed(2)}`;
+          menuItemSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading menu items:', error);
+        alert('Failed to load menu items');
+      }
+    }
+    
+    // Load movements
+    async function loadMovements() {
+      if (!currentLocation) return;
+      
+      try {
+        // For demo purposes, use mock data
+        const movements = [
+          { movement_id: 1, ingredient: { name: "Lettuce" }, staff: { name: "John Doe" }, quantity: 10, type: "delivery", cost: 25.00, revenue: null, timestamp: "2025-05-01T10:00:00" },
+          { movement_id: 2, ingredient: { name: "Tomato" }, staff: { name: "John Doe" }, quantity: 8, type: "delivery", cost: 24.00, revenue: null, timestamp: "2025-05-01T10:15:00" },
+          { movement_id: 3, ingredient: { name: "Lettuce" }, staff: { name: "Jane Smith" }, quantity: -0.2, type: "sale", cost: null, revenue: 2.25, timestamp: "2025-05-02T12:30:00" },
+          { movement_id: 4, ingredient: { name: "Chicken" }, staff: { name: "Jane Smith" }, quantity: -0.15, type: "sale", cost: null, revenue: 2.25, timestamp: "2025-05-02T12:30:00" },
+          { movement_id: 5, ingredient: { name: "Tomato" }, staff: { name: "Bob Johnson" }, quantity: -1.5, type: "waste", cost: 4.50, revenue: null, timestamp: "2025-05-03T18:00:00" }
+        ];
+        
+        const tableContainer = document.getElementById('movements-table');
+        
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Ingredient</th>
+                <th>Quantity</th>
+                <th>Staff</th>
+                <th>Cost</th>
+                <th>Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        movements.forEach(movement => {
+          const date = new Date(movement.timestamp).toLocaleDateString();
+          const time = new Date(movement.timestamp).toLocaleTimeString();
+          html += `
+            <tr>
+              <td>${date} ${time}</td>
+              <td>${movement.type.charAt(0).toUpperCase() + movement.type.slice(1)}</td>
+              <td>${movement.ingredient.name}</td>
+              <td>${movement.quantity}</td>
+              <td>${movement.staff.name}</td>
+              <td>${movement.cost ? '$' + movement.cost.toFixed(2) : '-'}</td>
+              <td>${movement.revenue ? '$' + movement.revenue.toFixed(2) : '-'}</td>
+            </tr>
+          `;
+        });
+        
+        html += `
+            </tbody>
+          </table>
+        `;
+        
+        tableContainer.innerHTML = html;
+      } catch (error) {
+        console.error('Error loading movements:', error);
+        alert('Failed to load movements');
+      }
+    }
+    
+    // Load summary
+    async function loadSummary() {
+      if (!currentLocation) return;
+      
+      try {
+        // For demo purposes, use mock data
+        const summary = {
+          totalDeliveryCost: 49.00,
+          totalSalesRevenue: 4.50,
+          totalWasteCost: 4.50,
+          totalInventoryValue: 120.75
+        };
+        
+        const summaryContainer = document.getElementById('summary-report');
+        
+        let html = `
+          <table>
+            <tr>
+              <th>Total Delivery Cost</th>
+              <td>$${summary.totalDeliveryCost.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <th>Total Sales Revenue</th>
+              <td>$${summary.totalSalesRevenue.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <th>Total Waste Cost</th>
+              <td>$${summary.totalWasteCost.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <th>Total Inventory Value</th>
+              <td>$${summary.totalInventoryValue.toFixed(2)}</td>
+            </tr>
+          </table>
+        `;
+        
+        summaryContainer.innerHTML = html;
+      } catch (error) {
+        console.error('Error loading summary:', error);
+        alert('Failed to load summary');
+      }
+    }
+    
+    // Accept delivery
+    function acceptDelivery() {
+      const ingredientId = document.getElementById('delivery-ingredient').value;
+      const quantity = document.getElementById('delivery-quantity').value;
+      const cost = document.getElementById('delivery-cost').value;
+      const reference = document.getElementById('delivery-reference').value;
+      const notes = document.getElementById('delivery-notes').value;
+      
+      if (!ingredientId || !quantity || !cost) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // For demo purposes, simulate a successful delivery
+      alert('Delivery recorded successfully!');
+      
+      // Reset form
+      document.getElementById('delivery-ingredient').value = '';
+      document.getElementById('delivery-quantity').value = '';
+      document.getElementById('delivery-cost').value = '';
+      document.getElementById('delivery-reference').value = '';
+      document.getElementById('delivery-notes').value = '';
+      
+      // Refresh inventory
+      loadInventory();
+    }
+    
+    // Record sale
+    function recordSale() {
+      const menuItemId = document.getElementById('sale-menu-item').value;
+      const quantity = document.getElementById('sale-quantity').value;
+      const notes = document.getElementById('sale-notes').value;
+      
+      if (!menuItemId || !quantity) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // For demo purposes, simulate a successful sale
+      alert('Sale recorded successfully!');
+      
+      // Reset form
+      document.getElementById('sale-menu-item').value = '';
+      document.getElementById('sale-quantity').value = '1';
+      document.getElementById('sale-notes').value = '';
+      
+      // Refresh inventory
+      loadInventory();
+    }
+    
+    // Take stock
+    function takeStock() {
+      const ingredientId = document.getElementById('stock-ingredient').value;
+      const actualQuantity = document.getElementById('stock-actual-quantity').value;
+      const notes = document.getElementById('stock-notes').value;
+      
+      if (!ingredientId || actualQuantity === '') {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // For demo purposes, simulate a successful stock take
+      alert('Stock adjustment recorded successfully!');
+      
+      // Reset form
+      document.getElementById('stock-ingredient').value = '';
+      document.getElementById('stock-actual-quantity').value = '';
+      document.getElementById('stock-notes').value = '';
+      
+      // Refresh inventory
+      loadInventory();
+    }
+  </script>
 </body>
 </html>
