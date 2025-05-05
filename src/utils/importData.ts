@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import csv from 'csv-parser';
+import csvParser from 'csv-parser';
 import { AppDataSource } from '../config/database';
 import { Location } from '../models/Location';
 import { Staff } from '../models/Staff';
@@ -8,416 +8,302 @@ import { Ingredient } from '../models/Ingredient';
 import { Recipe } from '../models/Recipe';
 import { RecipeIngredient } from '../models/RecipeIngredient';
 import { MenuItem } from '../models/MenuItem';
-import { Inventory } from '../models/Inventory';
 import { Modifier } from '../models/Modifier';
+import { Inventory } from '../models/Inventory';
 
-/**
- * Import data from CSV files into the database
- */
-async function importData() {
+// Path to CSV files
+const DATA_DIR = path.join(process.cwd(), 'data', 'csv');
+
+// Helper function to parse CSV files
+async function parseCSV(filePath: string): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const results: any[] = [];
+    fs.createReadStream(filePath)
+      .pipe(csvParser())
+      .on('data', (data: any) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (error: Error) => reject(error));
+  });
+}
+
+// Import locations
+async function importLocations(): Promise<void> {
   try {
-    // Initialize database connection
-    await AppDataSource.initialize();
-    console.log('Database connection established');
-
-    // Import locations
-    await importLocations();
+    const filePath = path.join(DATA_DIR, 'locations.csv');
+    const data = await parseCSV(filePath);
     
-    // Import staff
-    await importStaff();
+    const locationRepository = AppDataSource.getRepository(Location);
     
-    // Import ingredients
-    await importIngredients();
+    for (const item of data) {
+      const location = new Location();
+      location.location_id = parseInt(item.location_id);
+      location.name = item.name;
+      location.address = item.address;
+      location.phone = item.phone || null;
+      location.email = item.email || null;
+      location.active = item.active === 'true';
+      
+      await locationRepository.save(location);
+    }
     
-    // Import recipes
-    await importRecipes();
-    
-    // Import recipe ingredients
-    await importRecipeIngredients();
-    
-    // Import menu items
-    await importMenuItems();
-    
-    // Import modifiers
-    await importModifiers();
-    
-    // Initialize inventory with zero quantities for all ingredients at all locations
-    await initializeInventory();
-    
-    // Import inventory (this will override zero quantities with actual values from CSV)
-    await importInventory();
-    
-    console.log('Data import completed successfully');
-    process.exit(0);
+    console.log(`Imported ${data.length} locations`);
   } catch (error) {
-    console.error('Error during data import:', error);
-    process.exit(1);
+    console.error('Error importing locations:', error);
   }
 }
 
-/**
- * Import locations from CSV
- */
-async function importLocations() {
-  const locationRepository = AppDataSource.getRepository(Location);
-  const locations: Location[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/locations.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const location = new Location();
-        location.location_id = parseInt(data.location_id);
-        location.name = data.name;
-        location.address = data.address;
-        location.phone = data.phone;
-        location.email = data.email;
-        location.active = data.active === 'true';
-        
-        locations.push(location);
-      })
-      .on('end', async () => {
-        try {
-          await locationRepository.save(locations);
-          console.log(`Imported ${locations.length} locations`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+// Import staff
+async function importStaff(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'staff.csv');
+    const data = await parseCSV(filePath);
+    
+    const staffRepository = AppDataSource.getRepository(Staff);
+    
+    // Create a map to handle duplicates
+    const staffMap = new Map<number, Staff>();
+    
+    for (const item of data) {
+      const staff = new Staff();
+      staff.staff_id = parseInt(item.staff_id);
+      staff.name = item.name;
+      staff.location_id = parseInt(item.location_id);
+      staff.role = item.role;
+      staff.active = item.active === 'true';
+      
+      // Use the map to handle duplicates (last one wins)
+      staffMap.set(staff.staff_id, staff);
+    }
+    
+    // Save unique staff members
+    for (const staff of staffMap.values()) {
+      await staffRepository.save(staff);
+    }
+    
+    console.log(`Imported ${staffMap.size} staff members`);
+  } catch (error) {
+    console.error('Error importing staff:', error);
+  }
 }
 
-/**
- * Import staff from CSV
- */
-async function importStaff() {
-  const staffRepository = AppDataSource.getRepository(Staff);
-  const staff: Staff[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/staff.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const staffMember = new Staff();
-        staffMember.staff_id = parseInt(data.staff_id);
-        staffMember.name = data.name;
-        staffMember.location_id = parseInt(data.location_id);
-        staffMember.role = data.role;
-        staffMember.active = data.active === 'true';
-        
-        staff.push(staffMember);
-      })
-      .on('end', async () => {
-        try {
-          await staffRepository.save(staff);
-          console.log(`Imported ${staff.length} staff members`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+// Import ingredients
+async function importIngredients(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'ingredients.csv');
+    const data = await parseCSV(filePath);
+    
+    const ingredientRepository = AppDataSource.getRepository(Ingredient);
+    
+    for (const item of data) {
+      const ingredient = new Ingredient();
+      ingredient.ingredient_id = parseInt(item.ingredient_id);
+      ingredient.name = item.name;
+      ingredient.description = item.description || null;
+      ingredient.cost = parseFloat(item.cost);
+      ingredient.unit = item.unit;
+      ingredient.active = item.active === 'true';
+      
+      await ingredientRepository.save(ingredient);
+    }
+    
+    console.log(`Imported ${data.length} ingredients`);
+  } catch (error) {
+    console.error('Error importing ingredients:', error);
+  }
 }
 
-/**
- * Import ingredients from CSV
- */
-async function importIngredients() {
-  const ingredientRepository = AppDataSource.getRepository(Ingredient);
-  const ingredients: Ingredient[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/ingredients.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const ingredient = new Ingredient();
-        ingredient.ingredient_id = parseInt(data.ingredient_id);
-        ingredient.name = data.name;
-        ingredient.description = data.description;
-        ingredient.cost = parseFloat(data.cost);
-        ingredient.unit = data.unit;
-        ingredient.active = data.active === 'true';
-        
-        ingredients.push(ingredient);
-      })
-      .on('end', async () => {
-        try {
-          await ingredientRepository.save(ingredients);
-          console.log(`Imported ${ingredients.length} ingredients`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+// Import recipes and recipe ingredients
+async function importRecipes(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'recipes.csv');
+    const data = await parseCSV(filePath);
+    
+    const recipeRepository = AppDataSource.getRepository(Recipe);
+    
+    // Create a map to handle duplicates
+    const recipeMap = new Map<number, Recipe>();
+    
+    for (const item of data) {
+      const recipe = new Recipe();
+      recipe.recipe_id = parseInt(item.recipe_id);
+      recipe.name = item.name;
+      recipe.description = item.description || null;
+      recipe.active = item.active === 'true';
+      
+      // Use the map to handle duplicates (last one wins)
+      recipeMap.set(recipe.recipe_id, recipe);
+    }
+    
+    // Save unique recipes
+    for (const recipe of recipeMap.values()) {
+      await recipeRepository.save(recipe);
+    }
+    
+    console.log(`Imported ${recipeMap.size} recipes`);
+  } catch (error) {
+    console.error('Error importing recipes:', error);
+  }
 }
 
-/**
- * Import recipes from CSV
- */
-async function importRecipes() {
-  const recipeRepository = AppDataSource.getRepository(Recipe);
-  const recipes: Recipe[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/recipes.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const recipe = new Recipe();
-        recipe.recipe_id = parseInt(data.recipe_id);
-        recipe.name = data.name;
-        recipe.description = data.description;
-        recipe.active = data.active === 'true';
-        
-        recipes.push(recipe);
-      })
-      .on('end', async () => {
-        try {
-          await recipeRepository.save(recipes);
-          console.log(`Imported ${recipes.length} recipes`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
-}
-
-/**
- * Import recipe ingredients from CSV
- */
-async function importRecipeIngredients() {
-  const recipeIngredientRepository = AppDataSource.getRepository(RecipeIngredient);
-  const recipeIngredients: RecipeIngredient[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/recipe_ingredients.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
+// Import recipe ingredients
+async function importRecipeIngredients(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'recipes.csv');
+    const data = await parseCSV(filePath);
+    
+    const recipeIngredientRepository = AppDataSource.getRepository(RecipeIngredient);
+    
+    // Create a map to handle duplicates
+    const recipeIngredientMap = new Map<string, RecipeIngredient>();
+    
+    for (const item of data) {
+      if (item.ingredient_id && item.quantity) {
         const recipeIngredient = new RecipeIngredient();
-        recipeIngredient.recipe_ingredient_id = parseInt(data.recipe_ingredient_id);
-        recipeIngredient.recipe_id = parseInt(data.recipe_id);
-        recipeIngredient.ingredient_id = parseInt(data.ingredient_id);
-        recipeIngredient.quantity = parseFloat(data.quantity);
+        recipeIngredient.recipe_id = parseInt(item.recipe_id);
+        recipeIngredient.ingredient_id = parseInt(item.ingredient_id);
+        recipeIngredient.quantity = parseFloat(item.quantity);
         
-        recipeIngredients.push(recipeIngredient);
-      })
-      .on('end', async () => {
-        try {
-          await recipeIngredientRepository.save(recipeIngredients);
-          console.log(`Imported ${recipeIngredients.length} recipe ingredients`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
-}
-
-/**
- * Import menu items from CSV
- */
-async function importMenuItems() {
-  const menuItemRepository = AppDataSource.getRepository(MenuItem);
-  const menuItems: MenuItem[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/menu_items.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const menuItem = new MenuItem();
-        menuItem.menu_item_id = parseInt(data.menu_item_id);
-        menuItem.location_id = parseInt(data.location_id);
-        menuItem.recipe_id = parseInt(data.recipe_id);
-        menuItem.name = data.name;
-        menuItem.price = parseFloat(data.price);
-        menuItem.active = data.active === 'true';
+        // Create a unique key for the recipe ingredient
+        const key = `${recipeIngredient.recipe_id}-${recipeIngredient.ingredient_id}`;
         
-        menuItems.push(menuItem);
-      })
-      .on('end', async () => {
-        try {
-          await menuItemRepository.save(menuItems);
-          console.log(`Imported ${menuItems.length} menu items`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
-}
-
-/**
- * Import modifiers from CSV
- */
-async function importModifiers() {
-  const modifierRepository = AppDataSource.getRepository(Modifier);
-  const modifiers: Modifier[] = [];
-  
-  // Check if modifiers.csv exists
-  const modifiersPath = path.join(__dirname, '../../data/modifiers.csv');
-  if (!fs.existsSync(modifiersPath)) {
-    console.log('No modifiers.csv file found, skipping modifier import');
-    return Promise.resolve();
+        // Use the map to handle duplicates (last one wins)
+        recipeIngredientMap.set(key, recipeIngredient);
+      }
+    }
+    
+    // Save unique recipe ingredients
+    for (const recipeIngredient of recipeIngredientMap.values()) {
+      await recipeIngredientRepository.save(recipeIngredient);
+    }
+    
+    console.log(`Imported ${recipeIngredientMap.size} recipe ingredients`);
+  } catch (error) {
+    console.error('Error importing recipe ingredients:', error);
   }
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(modifiersPath)
-      .pipe(csv())
-      .on('data', (data) => {
-        const modifier = new Modifier();
-        modifier.modifier_id = parseInt(data.modifier_id);
-        modifier.name = data.name;
-        modifier.option = data.option;
-        modifier.price = parseFloat(data.price);
-        
-        modifiers.push(modifier);
-      })
-      .on('end', async () => {
-        try {
-          if (modifiers.length > 0) {
-            await modifierRepository.save(modifiers);
-            console.log(`Imported ${modifiers.length} modifiers`);
-          } else {
-            console.log('No modifiers to import');
-          }
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
 }
 
-/**
- * Initialize inventory with zero quantities for all ingredients at all locations
- */
-async function initializeInventory() {
+// Import menu items
+async function importMenuItems(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'menus.csv');
+    const data = await parseCSV(filePath);
+    
+    const menuItemRepository = AppDataSource.getRepository(MenuItem);
+    
+    for (const item of data) {
+      const menuItem = new MenuItem();
+      menuItem.menu_item_id = parseInt(item.menu_item_id);
+      menuItem.location_id = parseInt(item.location_id);
+      menuItem.recipe_id = parseInt(item.recipe_id);
+      menuItem.name = item.name;
+      menuItem.price = parseFloat(item.price);
+      menuItem.active = item.active === 'true';
+      
+      await menuItemRepository.save(menuItem);
+    }
+    
+    console.log(`Imported ${data.length} menu items`);
+  } catch (error) {
+    console.error('Error importing menu items:', error);
+  }
+}
+
+// Import modifiers
+async function importModifiers(): Promise<void> {
+  try {
+    const filePath = path.join(DATA_DIR, 'modifiers.csv');
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.log('No modifiers.csv file found, skipping modifier import');
+      return;
+    }
+    
+    const data = await parseCSV(filePath);
+    
+    const modifierRepository = AppDataSource.getRepository(Modifier);
+    
+    for (const item of data) {
+      const modifier = new Modifier();
+      modifier.modifier_id = parseInt(item.modifier_id);
+      modifier.name = item.name;
+      modifier.option = item.option;
+      modifier.price = parseFloat(item.price);
+      
+      await modifierRepository.save(modifier);
+    }
+    
+    console.log(`Imported ${data.length} modifiers`);
+  } catch (error) {
+    console.error('Error importing modifiers:', error);
+  }
+}
+
+// Initialize inventory for each location with zero quantities
+async function initializeInventory(): Promise<void> {
   try {
     const locationRepository = AppDataSource.getRepository(Location);
     const ingredientRepository = AppDataSource.getRepository(Ingredient);
     const inventoryRepository = AppDataSource.getRepository(Inventory);
     
-    // Get all locations and ingredients
     const locations = await locationRepository.find();
     const ingredients = await ingredientRepository.find();
     
-    console.log(`Initializing inventory for ${locations.length} locations and ${ingredients.length} ingredients...`);
-    
-    // Create inventory records with zero quantities for all location-ingredient combinations
-    const inventoryRecords: Inventory[] = [];
     let count = 0;
     
     for (const location of locations) {
       for (const ingredient of ingredients) {
-        // Check if inventory record already exists
-        const existingInventory = await inventoryRepository.findOne({
-          where: {
-            location_id: location.location_id,
-            ingredient_id: ingredient.ingredient_id
-          }
-        });
+        const inventory = new Inventory();
+        inventory.location_id = location.location_id;
+        inventory.ingredient_id = ingredient.ingredient_id;
+        inventory.quantity = 0;
+        inventory.unit = ingredient.unit;
         
-        if (!existingInventory) {
-          const inventory = new Inventory();
-          inventory.location_id = location.location_id;
-          inventory.ingredient_id = ingredient.ingredient_id;
-          inventory.quantity = 0;
-          inventory.unit = ingredient.unit;
-          
-          inventoryRecords.push(inventory);
-          count++;
-          
-          // Save in batches to avoid memory issues
-          if (inventoryRecords.length >= 100) {
-            await inventoryRepository.save(inventoryRecords);
-            inventoryRecords.length = 0;
-          }
-        }
+        await inventoryRepository.save(inventory);
+        count++;
       }
-    }
-    
-    // Save any remaining records
-    if (inventoryRecords.length > 0) {
-      await inventoryRepository.save(inventoryRecords);
     }
     
     console.log(`Initialized ${count} inventory records with zero quantities`);
   } catch (error) {
     console.error('Error initializing inventory:', error);
-    throw error;
   }
 }
 
-/**
- * Import inventory from CSV
- */
-async function importInventory() {
-  const inventoryRepository = AppDataSource.getRepository(Inventory);
-  const inventoryItems: Inventory[] = [];
-  
-  return new Promise<void>((resolve, reject) => {
-    fs.createReadStream(path.join(__dirname, '../../data/inventory.csv'))
-      .pipe(csv())
-      .on('data', (data) => {
-        const inventory = new Inventory();
-        inventory.inventory_id = parseInt(data.inventory_id);
-        inventory.location_id = parseInt(data.location_id);
-        inventory.ingredient_id = parseInt(data.ingredient_id);
-        inventory.quantity = parseFloat(data.quantity);
-        inventory.unit = data.unit;
-        
-        inventoryItems.push(inventory);
-      })
-      .on('end', async () => {
-        try {
-          // For each inventory item from CSV, update the corresponding record in the database
-          for (const item of inventoryItems) {
-            await inventoryRepository.update(
-              { 
-                location_id: item.location_id, 
-                ingredient_id: item.ingredient_id 
-              },
-              { 
-                quantity: item.quantity,
-                unit: item.unit
-              }
-            );
-          }
-          
-          console.log(`Updated ${inventoryItems.length} inventory items from CSV`);
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        reject(error);
-      });
-  });
+// Main function to import all data
+async function importAllData(): Promise<void> {
+  try {
+    // Create data/csv directory if it doesn't exist
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    
+    // Initialize database
+    await AppDataSource.initialize();
+    console.log('Database connection established');
+    
+    // Import data in the correct order to maintain referential integrity
+    await importLocations();
+    await importIngredients();
+    await importStaff();
+    await importRecipes();
+    await importRecipeIngredients();
+    await importMenuItems();
+    await importModifiers();
+    await initializeInventory();
+    
+    console.log('Data import completed successfully');
+    
+    // Close the database connection
+    await AppDataSource.destroy();
+  } catch (error) {
+    console.error('Error importing data:', error);
+  }
 }
 
-// Run the import
-importData();
+// Run the import if this script is executed directly
+if (require.main === module) {
+  importAllData().catch(console.error);
+}
+
+export { importAllData };
