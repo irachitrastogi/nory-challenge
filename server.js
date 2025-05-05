@@ -1,14 +1,51 @@
 const express = require('express');
 const path = require('path');
+const swaggerJSDoc = require('swagger-jsdoc');
+const swaggerUI = require('swagger-ui-express');
 
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Weird Salads Inventory API',
+      version: '1.0.0',
+      description: 'API for Weird Salads Inventory Management System',
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server',
+      },
+    ],
+  },
+  apis: ['./server.js'], // Point to this file for API documentation
+};
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
+
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve mock API data
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/**
+ * @swagger
+ * /api/locations:
+ *   get:
+ *     summary: Get all locations
+ *     tags: [Locations]
+ *     responses:
+ *       200:
+ *         description: List of locations
+ */
 app.get('/api/locations', (req, res) => {
   res.json([
     { location_id: 1, name: "Downtown" },
@@ -17,6 +54,22 @@ app.get('/api/locations', (req, res) => {
   ]);
 });
 
+/**
+ * @swagger
+ * /api/locations/{id}/staff:
+ *   get:
+ *     summary: Get staff for a location
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of staff members
+ */
 app.get('/api/locations/:id/staff', (req, res) => {
   const locationId = parseInt(req.params.id);
   const staffMembers = [
@@ -34,6 +87,22 @@ app.get('/api/locations/:id/staff', (req, res) => {
   res.json(staffMembers);
 });
 
+/**
+ * @swagger
+ * /api/inventory/{locationId}:
+ *   get:
+ *     summary: Get current inventory for a location
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: locationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of inventory items
+ */
 app.get('/api/inventory/:locationId', (req, res) => {
   const inventory = [
     { inventory_id: 1, ingredient: { name: "Lettuce", cost: 2.50 }, quantity: 10, unit: "kg" },
@@ -46,6 +115,22 @@ app.get('/api/inventory/:locationId', (req, res) => {
   res.json(inventory);
 });
 
+/**
+ * @swagger
+ * /api/menu/{locationId}:
+ *   get:
+ *     summary: Get menu items for a location
+ *     tags: [Menu]
+ *     parameters:
+ *       - in: path
+ *         name: locationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of menu items
+ */
 app.get('/api/menu/:locationId', (req, res) => {
   const menuItems = [
     { menu_item_id: 1, name: "Classic Caesar Salad", price: 8.99 },
@@ -58,6 +143,22 @@ app.get('/api/menu/:locationId', (req, res) => {
   res.json(menuItems);
 });
 
+/**
+ * @swagger
+ * /api/reports/movements/{locationId}:
+ *   get:
+ *     summary: Get inventory movements for a location
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: path
+ *         name: locationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of inventory movements
+ */
 app.get('/api/reports/movements/:locationId', (req, res) => {
   const movements = [
     { movement_id: 1, ingredient: { name: "Lettuce" }, staff: { name: "John Doe" }, quantity: 10, type: "delivery", cost: 25.00, revenue: null, timestamp: "2025-05-01T10:00:00" },
@@ -70,6 +171,22 @@ app.get('/api/reports/movements/:locationId', (req, res) => {
   res.json(movements);
 });
 
+/**
+ * @swagger
+ * /api/reports/summary/{locationId}:
+ *   get:
+ *     summary: Get inventory summary for a location
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: path
+ *         name: locationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Inventory summary
+ */
 app.get('/api/reports/summary/:locationId', (req, res) => {
   const summary = {
     totalDeliveryCost: 49.00,
@@ -81,9 +198,43 @@ app.get('/api/reports/summary/:locationId', (req, res) => {
   res.json(summary);
 });
 
-// POST endpoints
-app.use(express.json());
-
+/**
+ * @swagger
+ * /api/inventory/delivery:
+ *   post:
+ *     summary: Accept a delivery of ingredients
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationId
+ *               - staffId
+ *               - ingredientId
+ *               - quantity
+ *               - cost
+ *             properties:
+ *               locationId:
+ *                 type: integer
+ *               staffId:
+ *                 type: integer
+ *               ingredientId:
+ *                 type: integer
+ *               quantity:
+ *                 type: number
+ *               cost:
+ *                 type: number
+ *               reference:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Delivery recorded successfully
+ */
 app.post('/api/inventory/delivery', (req, res) => {
   // In a real app, this would save to the database
   console.log('Delivery received:', req.body);
@@ -98,6 +249,38 @@ app.post('/api/inventory/delivery', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/inventory/sale:
+ *   post:
+ *     summary: Record a sale of a menu item
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationId
+ *               - staffId
+ *               - recipeId
+ *               - quantity
+ *             properties:
+ *               locationId:
+ *                 type: integer
+ *               staffId:
+ *                 type: integer
+ *               recipeId:
+ *                 type: integer
+ *               quantity:
+ *                 type: integer
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Sale recorded successfully
+ */
 app.post('/api/inventory/sale', (req, res) => {
   // In a real app, this would save to the database
   console.log('Sale received:', req.body);
@@ -112,6 +295,38 @@ app.post('/api/inventory/sale', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/inventory/stock:
+ *   post:
+ *     summary: Take stock and adjust inventory
+ *     tags: [Inventory]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - locationId
+ *               - staffId
+ *               - ingredientId
+ *               - actualQuantity
+ *             properties:
+ *               locationId:
+ *                 type: integer
+ *               staffId:
+ *                 type: integer
+ *               ingredientId:
+ *                 type: integer
+ *               actualQuantity:
+ *                 type: number
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Stock adjustment recorded successfully
+ */
 app.post('/api/inventory/stock', (req, res) => {
   // In a real app, this would save to the database
   console.log('Stock adjustment received:', req.body);
@@ -129,4 +344,5 @@ app.post('/api/inventory/stock', (req, res) => {
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Swagger documentation available at http://localhost:${PORT}/api-docs`);
 });
