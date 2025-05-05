@@ -36,7 +36,7 @@ export class InventoryMovement {
   })
   type: MovementType;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", nullable: true })
   reference: string | null;
 
   @Column("decimal", { precision: 10, scale: 2, nullable: true })
@@ -45,7 +45,7 @@ export class InventoryMovement {
   @Column("decimal", { precision: 10, scale: 2, nullable: true })
   revenue: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", nullable: true })
   notes: string | null;
 
   @CreateDateColumn()

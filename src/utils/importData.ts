@@ -9,6 +9,7 @@ import { Recipe } from '../models/Recipe';
 import { RecipeIngredient } from '../models/RecipeIngredient';
 import { MenuItem } from '../models/MenuItem';
 import { Inventory } from '../models/Inventory';
+import { Modifier } from '../models/Modifier';
 
 /**
  * Import data from CSV files into the database
@@ -37,7 +38,13 @@ async function importData() {
     // Import menu items
     await importMenuItems();
     
-    // Import inventory
+    // Import modifiers
+    await importModifiers();
+    
+    // Initialize inventory with zero quantities for all ingredients at all locations
+    await initializeInventory();
+    
+    // Import inventory (this will override zero quantities with actual values from CSV)
     await importInventory();
     
     console.log('Data import completed successfully');
@@ -260,6 +267,111 @@ async function importMenuItems() {
 }
 
 /**
+ * Import modifiers from CSV
+ */
+async function importModifiers() {
+  const modifierRepository = AppDataSource.getRepository(Modifier);
+  const modifiers: Modifier[] = [];
+  
+  // Check if modifiers.csv exists
+  const modifiersPath = path.join(__dirname, '../../data/modifiers.csv');
+  if (!fs.existsSync(modifiersPath)) {
+    console.log('No modifiers.csv file found, skipping modifier import');
+    return Promise.resolve();
+  }
+  
+  return new Promise<void>((resolve, reject) => {
+    fs.createReadStream(modifiersPath)
+      .pipe(csv())
+      .on('data', (data) => {
+        const modifier = new Modifier();
+        modifier.modifier_id = parseInt(data.modifier_id);
+        modifier.name = data.name;
+        modifier.option = data.option;
+        modifier.price = parseFloat(data.price);
+        
+        modifiers.push(modifier);
+      })
+      .on('end', async () => {
+        try {
+          if (modifiers.length > 0) {
+            await modifierRepository.save(modifiers);
+            console.log(`Imported ${modifiers.length} modifiers`);
+          } else {
+            console.log('No modifiers to import');
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      })
+      .on('error', (error) => {
+        reject(error);
+      });
+  });
+}
+
+/**
+ * Initialize inventory with zero quantities for all ingredients at all locations
+ */
+async function initializeInventory() {
+  try {
+    const locationRepository = AppDataSource.getRepository(Location);
+    const ingredientRepository = AppDataSource.getRepository(Ingredient);
+    const inventoryRepository = AppDataSource.getRepository(Inventory);
+    
+    // Get all locations and ingredients
+    const locations = await locationRepository.find();
+    const ingredients = await ingredientRepository.find();
+    
+    console.log(`Initializing inventory for ${locations.length} locations and ${ingredients.length} ingredients...`);
+    
+    // Create inventory records with zero quantities for all location-ingredient combinations
+    const inventoryRecords: Inventory[] = [];
+    let count = 0;
+    
+    for (const location of locations) {
+      for (const ingredient of ingredients) {
+        // Check if inventory record already exists
+        const existingInventory = await inventoryRepository.findOne({
+          where: {
+            location_id: location.location_id,
+            ingredient_id: ingredient.ingredient_id
+          }
+        });
+        
+        if (!existingInventory) {
+          const inventory = new Inventory();
+          inventory.location_id = location.location_id;
+          inventory.ingredient_id = ingredient.ingredient_id;
+          inventory.quantity = 0;
+          inventory.unit = ingredient.unit;
+          
+          inventoryRecords.push(inventory);
+          count++;
+          
+          // Save in batches to avoid memory issues
+          if (inventoryRecords.length >= 100) {
+            await inventoryRepository.save(inventoryRecords);
+            inventoryRecords.length = 0;
+          }
+        }
+      }
+    }
+    
+    // Save any remaining records
+    if (inventoryRecords.length > 0) {
+      await inventoryRepository.save(inventoryRecords);
+    }
+    
+    console.log(`Initialized ${count} inventory records with zero quantities`);
+  } catch (error) {
+    console.error('Error initializing inventory:', error);
+    throw error;
+  }
+}
+
+/**
  * Import inventory from CSV
  */
 async function importInventory() {
@@ -281,8 +393,21 @@ async function importInventory() {
       })
       .on('end', async () => {
         try {
-          await inventoryRepository.save(inventoryItems);
-          console.log(`Imported ${inventoryItems.length} inventory items`);
+          // For each inventory item from CSV, update the corresponding record in the database
+          for (const item of inventoryItems) {
+            await inventoryRepository.update(
+              { 
+                location_id: item.location_id, 
+                ingredient_id: item.ingredient_id 
+              },
+              { 
+                quantity: item.quantity,
+                unit: item.unit
+              }
+            );
+          }
+          
+          console.log(`Updated ${inventoryItems.length} inventory items from CSV`);
           resolve();
         } catch (error) {
           reject(error);

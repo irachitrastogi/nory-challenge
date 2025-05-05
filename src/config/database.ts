@@ -9,6 +9,7 @@ import { RecipeIngredient } from '../models/RecipeIngredient';
 import { MenuItem } from '../models/MenuItem';
 import { Inventory } from '../models/Inventory';
 import { InventoryMovement } from '../models/InventoryMovement';
+import { Modifier } from '../models/Modifier';
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +31,8 @@ export const AppDataSource = new DataSource({
     RecipeIngredient,
     MenuItem,
     Inventory,
-    InventoryMovement
+    InventoryMovement,
+    Modifier
   ],
   migrations: [path.join(__dirname, '../migrations/**/*.{js,ts}')],
   subscribers: [path.join(__dirname, '../subscribers/**/*.{js,ts}')],

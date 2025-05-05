@@ -1,0 +1,11 @@
+modifier_id,name,option,price
+1,Dressing,Ranch,0.50
+2,Dressing,Italian,0.50
+3,Dressing,Balsamic,0.50
+4,Protein,Extra Chicken,2.50
+5,Protein,Tofu,1.50
+6,Protein,Salmon,3.50
+7,Toppings,Avocado,1.00
+8,Toppings,Bacon,1.00
+9,Toppings,Croutons,0.25
+10,Size,Large,2.00
