@@ -34,6 +34,7 @@
     "swagger-ui-express": "^4.6.3",
     "typeorm": "^0.3.15",
     "typescript": "^5.0.4",
+    "uuid": "^11.1.0",
     "xss-clean": "^0.1.1"
   },
   "devDependencies": {
@@ -45,6 +46,7 @@
     "@types/supertest": "^2.0.12",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^5.59.2",
     "@typescript-eslint/parser": "^5.59.2",
     "chai": "^4.3.7",
