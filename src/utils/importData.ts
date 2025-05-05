@@ -41,7 +41,7 @@ async function importLocations(): Promise<void> {
       location.address = item.address;
       location.phone = item.phone || null;
       location.email = item.email || null;
-      location.active = item.active === 'true';
+      location.active = true; // Set all locations to active by default
       
       await locationRepository.save(location);
     }

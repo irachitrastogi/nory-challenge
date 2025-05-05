@@ -15,13 +15,13 @@ import { Modifier } from '../models/Modifier';
 dotenv.config();
 
 // Database path from environment or default
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../data/inventory.sqlite');
+const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'database.sqlite');
 
 // Create TypeORM data source
 export const AppDataSource = new DataSource({
   type: 'sqlite',
   database: dbPath,
-  synchronize: process.env.NODE_ENV === 'development', // Only in development
+  synchronize: true, // Enable synchronize for development
   logging: process.env.NODE_ENV === 'development',
   entities: [
     Location,
@@ -37,3 +37,15 @@ export const AppDataSource = new DataSource({
   migrations: [path.join(__dirname, '../migrations/**/*.{js,ts}')],
   subscribers: [path.join(__dirname, '../subscribers/**/*.{js,ts}')],
 });
+
+// Initialize database connection
+export const initializeDatabase = async () => {
+  try {
+    await AppDataSource.initialize();
+    console.log('Database connection established');
+    return AppDataSource;
+  } catch (error) {
+    console.error('Error connecting to database:', error);
+    throw error;
+  }
+};
