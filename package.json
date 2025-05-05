@@ -9,7 +9,8 @@
     "build": "tsc",
     "import-data": "ts-node src/utils/importData.ts",
     "test": "mocha -r ts-node/register 'src/tests/**/*.test.ts'",
-    "test:coverage": "nyc --reporter=lcov --reporter=text npm test",
+    "test:coverage": "nyc --reporter=html --reporter=lcov --reporter=text npm test",
+    "test:coverage:report": "./scripts/run-coverage.sh",
     "lint": "eslint 'src/**/*.{js,ts}'",
     "lint:fix": "eslint 'src/**/*.{js,ts}' --fix",
     "setup": "npm run import-data"
