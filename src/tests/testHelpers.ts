@@ -134,7 +134,7 @@ export function createStockAdjustmentData() {
     locationId: mockData.location.location_id,
     staffId: mockData.staff.staff_id,
     ingredientId: mockData.ingredient.ingredient_id,
-    quantity: 8, // Less than current quantity to simulate waste
+    actualQuantity: 8, // Less than current quantity to simulate waste
     notes: 'Stock count adjustment'
   };
 }
