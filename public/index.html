@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weird Salads Inventory</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Weird Salads Inventory Management</h1>
+  </header>
+  
+  <main>
+    <section id="login-section">
+      <h2>Select Location and Staff</h2>
+      <div class="form-container">
+        <div class="form-group">
+          <label for="location-select">Location:</label>
+          <select id="location-select">
+            <option value="">Select a location</option>
+            <!-- Locations will be loaded here -->
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="staff-select">Staff:</label>
+          <select id="staff-select" disabled>
+            <option value="">Select a staff member</option>
+            <!-- Staff will be loaded here based on location -->
+          </select>
+        </div>
+        
+        <button id="login-button" disabled>Start Session</button>
+      </div>
+    </section>
+    
+    <section id="dashboard" class="hidden">
+      <!-- Dashboard content will be shown after login -->
+      <div class="tabs">
+        <button class="tab-button active" data-tab="inventory">Inventory</button>
+        <button class="tab-button" data-tab="deliveries">Deliveries</button>
+        <button class="tab-button" data-tab="sales">Sales</button>
+        <button class="tab-button" data-tab="stock">Take Stock</button>
+        <button class="tab-button" data-tab="reports">Reports</button>
+      </div>
+      
+      <div id="tab-content">
+        <!-- Tab content will be loaded here -->
+        <div id="inventory-tab" class="tab-panel active">
+          <h3>Current Inventory</h3>
+          <div id="inventory-list">
+            <!-- Inventory items will be loaded here -->
+          </div>
+        </div>
+        
+        <!-- Other tab panels will be added here -->
+      </div>
+    </section>
+  </main>
+  
+  <footer>
+    <p>&copy; 2025 Weird Salads Inventory Management</p>
+  </footer>
+  
+  <script src="js/app.js"></script>
+</body>
+</html>
