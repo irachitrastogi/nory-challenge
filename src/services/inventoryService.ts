@@ -5,6 +5,7 @@ import { RecipeIngredient } from "../models/RecipeIngredient";
 import { MenuItem } from "../models/MenuItem";
 import { Staff } from "../models/Staff";
 import { Ingredient } from "../models/Ingredient";
+import { Between, MoreThanOrEqual, LessThanOrEqual } from "typeorm";
 
 // Interface for delivery data
 interface DeliveryData {
@@ -383,24 +384,28 @@ export class InventoryService {
       queryConditions.type = movementType;
     }
     
+    // Use TypeORM's Between, MoreThanOrEqual, or LessThanOrEqual for date filtering
+    let dateFilter = {};
     if (startDate && endDate) {
-      queryConditions.timestamp = {
-        $gte: startDate,
-        $lte: endDate
+      dateFilter = {
+        timestamp: Between(startDate, endDate)
       };
     } else if (startDate) {
-      queryConditions.timestamp = {
-        $gte: startDate
+      dateFilter = {
+        timestamp: MoreThanOrEqual(startDate)
       };
     } else if (endDate) {
-      queryConditions.timestamp = {
-        $lte: endDate
+      dateFilter = {
+        timestamp: LessThanOrEqual(endDate)
       };
     }
     
     // Get movements with related entities
     const movements = await movementRepository.find({
-      where: queryConditions,
+      where: {
+        ...queryConditions,
+        ...dateFilter
+      },
       relations: ["ingredient", "staff"],
       order: {
         timestamp: "DESC"
