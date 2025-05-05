@@ -198,6 +198,11 @@ export class InventoryService {
           }
         });
         
+        // Add null check to prevent TypeScript errors
+        if (!inventory) {
+          throw new Error(`Inventory record not found for location ${locationId} and ingredient ${recipeIngredient.ingredient_id}`);
+        }
+        
         inventory.quantity = Number(inventory.quantity) - requiredQuantity;
         await inventoryRepository.save(inventory);
         

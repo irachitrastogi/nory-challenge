@@ -37,16 +37,16 @@ export class InventoryMovement {
   type: MovementType;
 
   @Column({ nullable: true })
-  reference: string;
+  reference: string | null;
 
   @Column("decimal", { precision: 10, scale: 2, nullable: true })
-  cost: number;
+  cost: number | null;
 
   @Column("decimal", { precision: 10, scale: 2, nullable: true })
-  revenue: number;
+  revenue: number | null;
 
   @Column({ nullable: true })
-  notes: string;
+  notes: string | null;
 
   @CreateDateColumn()
   timestamp: Date;
