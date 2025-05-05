@@ -3,6 +3,8 @@ import { Inventory } from "../models/Inventory";
 import { InventoryMovement, MovementType } from "../models/InventoryMovement";
 import { RecipeIngredient } from "../models/RecipeIngredient";
 import { MenuItem } from "../models/MenuItem";
+import { Staff } from "../models/Staff";
+import { Ingredient } from "../models/Ingredient";
 
 // Interface for delivery data
 interface DeliveryData {
@@ -19,7 +21,7 @@ interface DeliveryData {
 interface SaleData {
   locationId: number;
   staffId: number;
-  menuItemId: number;
+  recipeId: number; 
   quantity: number;
   notes?: string;
 }
@@ -75,11 +77,68 @@ export class InventoryService {
       });
       
       if (!inventory) {
-        // Create new inventory record if it doesn't exist
-        inventory = new Inventory();
-        inventory.location_id = locationId;
-        inventory.ingredient_id = ingredientId;
-        inventory.quantity = 0;
+        throw new Error(`Inventory record not found for location ${locationId} and ingredient ${ingredientId}`);
+      }
+      
+      // Get the ingredient to update its cost
+      const ingredientRepository = queryRunner.manager.getRepository(Ingredient);
+      const ingredient = await ingredientRepository.findOne({
+        where: {
+          ingredient_id: ingredientId
+        }
+      });
+      
+      if (!ingredient) {
+        throw new Error(`Ingredient with ID ${ingredientId} not found`);
+      }
+      
+      // Calculate weighted average cost
+      // Formula: (existingQuantity * existingCost + deliveryQuantity * deliveryCost) / (existingQuantity + deliveryQuantity)
+      const existingQuantity = Number(inventory.quantity);
+      const existingCost = Number(ingredient.cost);
+      const deliveryQuantity = Number(quantity);
+      const deliveryCost = Number(cost);
+      
+      console.log('DEBUG - Weighted Average Cost Calculation:');
+      console.log(`Ingredient: ${ingredient.name}`);
+      console.log(`Existing Quantity: ${existingQuantity}`);
+      console.log(`Existing Cost: ${existingCost}`);
+      console.log(`Delivery Quantity: ${deliveryQuantity}`);
+      console.log(`Delivery Cost: ${deliveryCost}`);
+      
+      // Only update cost if there's a valid delivery quantity and cost
+      if (deliveryQuantity > 0 && deliveryCost > 0) {
+        // Calculate new weighted average cost
+        const newCost = (existingQuantity * existingCost + deliveryQuantity * deliveryCost) / 
+                        (existingQuantity + deliveryQuantity);
+        
+        console.log(`New Weighted Average Cost: ${newCost}`);
+        console.log(`Rounded Cost: ${Math.round(newCost * 100) / 100}`);
+        
+        // Update ingredient cost with new weighted average
+        // Round to 2 decimal places for currency
+        ingredient.cost = Math.round(newCost * 100) / 100;
+        await ingredientRepository.save(ingredient);
+        
+        console.log(`Updated Ingredient Cost: ${ingredient.cost}`);
+        
+        /* 
+         * Why we're updating the ingredient cost:
+         * 
+         * We're implementing a weighted average cost accounting method for inventory.
+         * This ensures that the ingredient cost shown in the Current Inventory reflects
+         * the actual average cost of the items in stock, rather than a fixed standard cost.
+         * 
+         * Benefits:
+         * 1. More accurate inventory valuation
+         * 2. Better cost tracking for financial reporting
+         * 3. More realistic profit calculations for menu items
+         * 4. Accounts for price fluctuations from suppliers over time
+         * 
+         * The weighted average method is appropriate for a restaurant inventory system
+         * as it balances accuracy with simplicity, compared to more complex methods
+         * like FIFO (First-In-First-Out) or LIFO (Last-In-First-Out).
+         */
       }
       
       // Update inventory quantity
@@ -119,7 +178,7 @@ export class InventoryService {
    * Sell a menu item, reducing inventory for all ingredients in the recipe
    */
   async sellItem(data: SaleData): Promise<InventoryMovement[]> {
-    const { locationId, staffId, menuItemId, quantity, notes } = data;
+    const { locationId, staffId, recipeId, quantity, notes } = data;
     
     // Start a transaction
     const queryRunner = AppDataSource.createQueryRunner();
@@ -131,27 +190,26 @@ export class InventoryService {
       const menuItemRepository = queryRunner.manager.getRepository(MenuItem);
       const menuItem = await menuItemRepository.findOne({
         where: {
-          menu_item_id: menuItemId,
-          location_id: locationId
-        },
-        relations: ["recipe"]
+          location_id: locationId,
+          recipe_id: recipeId
+        }
       });
       
       if (!menuItem) {
-        throw new Error(`Menu item not found for location ${locationId} and ID ${menuItemId}`);
+        throw new Error(`Menu item not found for location ${locationId} and recipe ${recipeId}`);
       }
       
       // Get the recipe ingredients
       const recipeIngredientRepository = queryRunner.manager.getRepository(RecipeIngredient);
       const recipeIngredients = await recipeIngredientRepository.find({
         where: {
-          recipe_id: menuItem.recipe_id
+          recipe_id: recipeId
         },
         relations: ["ingredient"]
       });
       
       if (recipeIngredients.length === 0) {
-        throw new Error(`No ingredients found for recipe ${menuItem.recipe_id}`);
+        throw new Error(`No ingredients found for recipe ${recipeId}`);
       }
       
       // Check if there's enough inventory for all ingredients
@@ -213,7 +271,7 @@ export class InventoryService {
         movement.ingredient_id = recipeIngredient.ingredient_id;
         movement.quantity = -requiredQuantity; // Negative for sales
         movement.type = MovementType.SALE;
-        movement.reference = menuItemId.toString();
+        movement.reference = recipeId.toString();
         movement.cost = null;
         movement.revenue = totalRevenue / recipeIngredients.length; // Distribute revenue evenly among ingredients
         movement.notes = notes || null;
@@ -309,54 +367,51 @@ export class InventoryService {
   }
   
   /**
-   * Get current inventory for a location
-   */
-  async getCurrentInventory(locationId: number): Promise<Inventory[]> {
-    const inventoryRepository = AppDataSource.getRepository(Inventory);
-    
-    const inventory = await inventoryRepository.find({
-      where: {
-        location_id: locationId
-      },
-      relations: ["ingredient"]
-    });
-    
-    return inventory;
-  }
-  
-  /**
    * Get inventory movements based on filters
    */
   async getInventoryMovements(filters: ReportFilters): Promise<InventoryMovement[]> {
     const { locationId, startDate, endDate, movementType } = filters;
     
     const movementRepository = AppDataSource.getRepository(InventoryMovement);
-    const queryBuilder = movementRepository.createQueryBuilder("movement")
-      .leftJoinAndSelect("movement.ingredient", "ingredient")
-      .leftJoinAndSelect("movement.staff", "staff")
-      .where("movement.location_id = :locationId", { locationId });
+    
+    // Build query conditions
+    const queryConditions: any = {
+      location_id: locationId
+    };
     
     if (movementType) {
-      queryBuilder.andWhere("movement.type = :movementType", { movementType });
+      queryConditions.type = movementType;
     }
     
-    if (startDate) {
-      queryBuilder.andWhere("movement.timestamp >= :startDate", { startDate });
+    if (startDate && endDate) {
+      queryConditions.timestamp = {
+        $gte: startDate,
+        $lte: endDate
+      };
+    } else if (startDate) {
+      queryConditions.timestamp = {
+        $gte: startDate
+      };
+    } else if (endDate) {
+      queryConditions.timestamp = {
+        $lte: endDate
+      };
     }
     
-    if (endDate) {
-      queryBuilder.andWhere("movement.timestamp <= :endDate", { endDate });
-    }
-    
-    queryBuilder.orderBy("movement.timestamp", "DESC");
-    
-    const movements = await queryBuilder.getMany();
+    // Get movements with related entities
+    const movements = await movementRepository.find({
+      where: queryConditions,
+      relations: ["ingredient", "staff"],
+      order: {
+        timestamp: "DESC"
+      }
+    });
     
     return movements;
   }
   
   /**
-   * Generate a report summary
+   * Generate a monthly report summary
    */
   async getReportSummary(filters: ReportFilters): Promise<ReportSummary> {
     const { locationId } = filters;
@@ -402,6 +457,22 @@ export class InventoryService {
   }
   
   /**
+   * Get current inventory for a location
+   */
+  async getCurrentInventory(locationId: number): Promise<Inventory[]> {
+    const inventoryRepository = AppDataSource.getRepository(Inventory);
+    
+    const inventory = await inventoryRepository.find({
+      where: {
+        location_id: locationId
+      },
+      relations: ["ingredient"]
+    });
+    
+    return inventory;
+  }
+  
+  /**
    * Get available menu items for a location
    */
   async getMenuItems(locationId: number): Promise<MenuItem[]> {
@@ -409,12 +480,42 @@ export class InventoryService {
     
     const menuItems = await menuItemRepository.find({
       where: {
-        location_id: locationId,
-        active: true
+        location_id: locationId
       },
       relations: ["recipe"]
     });
     
     return menuItems;
+  }
+  
+  /**
+   * Get staff for a location
+   */
+  async getStaff(locationId: number): Promise<Staff[]> {
+    const staffRepository = AppDataSource.getRepository(Staff);
+    
+    const staff = await staffRepository.find({
+      where: {
+        location_id: locationId
+      }
+    });
+    
+    return staff;
+  }
+  
+  /**
+   * Get ingredients for a recipe
+   */
+  async getRecipeIngredients(recipeId: number): Promise<RecipeIngredient[]> {
+    const recipeIngredientRepository = AppDataSource.getRepository(RecipeIngredient);
+    
+    const recipeIngredients = await recipeIngredientRepository.find({
+      where: {
+        recipe_id: recipeId
+      },
+      relations: ["ingredient"]
+    });
+    
+    return recipeIngredients;
   }
 }

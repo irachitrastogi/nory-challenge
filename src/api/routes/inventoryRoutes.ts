@@ -113,14 +113,14 @@ router.post('/delivery', [
  *             required:
  *               - locationId
  *               - staffId
- *               - menuItemId
+ *               - recipeId
  *               - quantity
  *             properties:
  *               locationId:
  *                 type: integer
  *               staffId:
  *                 type: integer
- *               menuItemId:
+ *               recipeId:
  *                 type: integer
  *               quantity:
  *                 type: integer
@@ -138,7 +138,7 @@ router.post('/delivery', [
 router.post('/sale', [
   body('locationId').isInt().withMessage('Location ID must be an integer'),
   body('staffId').isInt().withMessage('Staff ID must be an integer'),
-  body('menuItemId').isInt().withMessage('Menu Item ID must be an integer'),
+  body('recipeId').isInt().withMessage('Recipe ID must be an integer'),
   body('quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
   body('notes').optional().isString().withMessage('Notes must be a string')
 ], async (req: Request, res: Response, next: NextFunction) => {
@@ -213,6 +213,35 @@ router.post('/stock', [
   try {
     const movement = await inventoryService.takeStock(req.body);
     res.status(201).json(movement);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/inventory/recipe/{recipeId}/ingredients:
+ *   get:
+ *     summary: Get ingredients for a recipe
+ *     tags: [Inventory]
+ *     parameters:
+ *       - in: path
+ *         name: recipeId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Recipe ID
+ *     responses:
+ *       200:
+ *         description: List of recipe ingredients
+ *       500:
+ *         description: Server error
+ */
+router.get('/recipe/:recipeId/ingredients', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const recipeId = parseInt(req.params.recipeId);
+    const ingredients = await inventoryService.getRecipeIngredients(recipeId);
+    res.status(200).json(ingredients);
   } catch (error) {
     next(error);
   }
