@@ -1,8 +1,6 @@
 import { AppDataSource } from "../config/database";
 import { Inventory } from "../models/Inventory";
 import { InventoryMovement, MovementType } from "../models/InventoryMovement";
-import { Ingredient } from "../models/Ingredient";
-import { Recipe } from "../models/Recipe";
 import { RecipeIngredient } from "../models/RecipeIngredient";
 import { MenuItem } from "../models/MenuItem";
 

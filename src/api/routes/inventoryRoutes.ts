@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { body, validationResult } from 'express-validator';
 import { InventoryService } from '../../services/inventoryService';
-import { body, param, validationResult } from 'express-validator';
 
 const router = Router();
 const inventoryService = new InventoryService();

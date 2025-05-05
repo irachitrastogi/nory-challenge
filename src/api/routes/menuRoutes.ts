@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { InventoryService } from '../../services/inventoryService';
-import { param } from 'express-validator';
 
 const router = Router();
 const inventoryService = new InventoryService();
